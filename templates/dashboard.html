@@ -2,10 +2,8 @@
 {% load static %}
 
 {% block content %}
-<!-- Include Bootstrap CSS -->
 <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- Custom CSS for card styling -->
 <style>
 .card-stats {
     border: none;
@@ -68,9 +66,7 @@
 }
 </style>
 
-<!-- Content Row -->
 <div class="row">
-    <!-- CPU Utilization Summary -->
     <div class="col-xl-12 col-lg-12">
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -155,100 +151,102 @@
                                         <i class="fas fa-percent"></i>
                                     </div>
                                 </div>
-                                <div class="progress mt-3">
-                                    <div class="progress-bar" id="averageUtilizationBar" role="progressbar" style="width: 0%"></div>
-                                </div>
-                                <small class="text-white-50">Average CPU Utilization</small>
                             </div>
+                            <div class="progress mt-3">
+                                <div class="progress-bar" id="averageUtilizationBar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-white-50">Average CPU Utilization</small>
                         </div>
                     </div>
                 </div>
-                <div class="text-center mt-4">
-                    <button id="showHostsBtn" class="btn btn-primary">Show Hosts</button>
-                </div>
-                <div id="hostDetails" class="mt-4" style="display:none;">
-                    <div id="hostCards" class="row"></div>
-                </div>
+            </div>
+            <div class="text-center mt-4">
+                <button id="showHostsBtn" class="btn btn-primary">Show Hosts</button>
+            </div>
+            <div id="hostDetails" class="mt-4" style="display:none;">
+                <div id="hostCards" class="row"></div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let updateIntervalId;
+let updateIntervalId;
 
-    // Function to fetch data and update the summary
-    function fetchData(timeRange) {
-        fetch(`/metrics/?time_range=${timeRange}`)
-            .then(response => response.json())
-            .then(data => {
-                updateSummary(data.summary);
-                updateHostDetails(data.details);
-            })
-            .catch(error => {
-                console.error('Error fetching data:', error);
-            });
-    }
-
-    // Function to update the summary section
-    function updateSummary(summary) {
-        const totalHosts = summary.total_hosts;
-        const activeHosts = summary.active_hosts;
-        const inactiveHosts = summary.inactive_hosts;
-        const averageUtilization = summary.average_utilization;
-
-        document.getElementById('activeHostsCount').textContent = activeHosts;
-        document.getElementById('inactiveHostsCount').textContent = inactiveHosts;
-        document.getElementById('totalHostsCount').textContent = totalHosts;
-        document.getElementById('averageUtilizationCount').textContent = averageUtilization.toFixed(2) + '%';
-
-        document.getElementById('activeHostsBar').style.width = `${(activeHosts / totalHosts) * 100}%`;
-        document.getElementById('inactiveHostsBar').style.width = `${(inactiveHosts / totalHosts) * 100}%`;
-        document.getElementById('totalHostsBar').style.width = `100%`;
-        document.getElementById('averageUtilizationBar').style.width = `${averageUtilization}%`;
-    }
-
-    // Function to update the host details section
-    function updateHostDetails(details) {
-        const hostCards = document.getElementById('hostCards');
-        hostCards.innerHTML = '';
-
-        details.forEach(detail => {
-            const statusClass = detail.cpu_utilization === 0 ? 'bg-gradient-danger' :
-                                detail.cpu_utilization < 50 ? 'bg-gradient-success' : 'bg-gradient-warning';
-            const statusText = detail.cpu_utilization === 0 ? 'Bad' :
-                                detail.cpu_utilization < 50 ? 'Good' : 'Normal';
-
-            const card = document.createElement('div');
-            card.className = `col-md-4 host-card ${statusClass}`;
-            card.innerHTML = `
-                <div class="card-body text-white">
-                    <h5 class="card-title">${detail.host_name}</h5>
-                    <p class="card-text">IP: ${detail.ip_address}</p>
-                    <p class="card-text">CPU Utilization: ${detail.cpu_utilization.toFixed(2)}%</p>
-                    <p class="card-text">Status: ${statusText}</p>
-                </div>
-            `;
-            hostCards.appendChild(card);
+// Function to fetch data and update the summary
+function fetchData(timeRange) {
+    fetch(`/metrics2/?time_range=${timeRange}`)
+        .then(response => response.json())
+        .then(data => {
+            updateSummary(data.summary);
+            updateHostDetails(data.details);
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
         });
-    }
+}
 
-    document.getElementById('showHostsBtn').addEventListener('click', () => {
-        const hostDetails = document.getElementById('hostDetails');
-        hostDetails.style.display = hostDetails.style.display === 'none' ? 'block' : 'none';
+// Function to update the summary section
+function updateSummary(summary) {
+    const totalHosts = summary.total_hosts;
+    const activeHosts = summary.active_hosts;
+    const inactiveHosts = summary.inactive_hosts;
+    const averageUtilization = summary.average_utilization;
+
+    document.getElementById('activeHostsCount').textContent = activeHosts;
+    document.getElementById('inactiveHostsCount').textContent = inactiveHosts;
+    document.getElementById('totalHostsCount').textContent = totalHosts;
+    document.getElementById('averageUtilizationCount').textContent = averageUtilization.toFixed(2) + '%';
+
+    document.getElementById('activeHostsBar').style.width = `${(activeHosts / totalHosts) * 100}%`;
+    document.getElementById('inactiveHostsBar').style.width = `${(inactiveHosts / totalHosts) * 100}%`;
+    document.getElementById('totalHostsBar').style.width = `100%`;
+    document.getElementById('averageUtilizationBar').style.width = `${averageUtilization}%`;
+}
+
+// Function to update the host details section
+function updateHostDetails(details) {
+    const hostCards = document.getElementById('hostCards');
+    hostCards.innerHTML = '';
+
+    details.forEach(detail => {
+        const statusClass = detail.cpu_utilization === 0 ? 'bg-gradient-danger' :
+                            detail.cpu_utilization < 50 ? 'bg-gradient-success' : 'bg-gradient-warning';
+        const statusText = detail.cpu_utilization === 0 ? 'Bad' :
+                            detail.cpu_utilization < 50 ? 'Good' : 'Normal';
+
+        const card = document.createElement('div');
+        card.className = `col-md-4 host-card ${statusClass}`;
+        card.innerHTML = `
+            <div class="card-body text-white">
+                <h5 class="card-title">${detail.host_name}</h5>
+                <p class="card-text">IP: ${detail.ip_address}</p>
+                <p class="card-text">CPU Utilization: ${detail.cpu_utilization.toFixed(2)}%</p>
+                <p class="card-text">Status: ${statusText}</p>
+            </div>
+        `;
+        hostCards.appendChild(card);
     });
+}
 
-    document.getElementById('updateInterval').addEventListener('change', function() {
-        clearInterval(updateIntervalId);
-        const interval = parseInt(this.value, 10);
-        fetchData('1h'); // Fetch data initially
-        updateIntervalId = setInterval(() => fetchData('1h'), interval);
-    });
+document.getElementById('showHostsBtn').addEventListener('click', () => {
+    const hostDetails = document.getElementById('hostDetails');
+    hostDetails.style.display = hostDetails.style.display === 'none' ? 'block' : 'none';
+});
 
-    // Initial fetch and set interval to 10 seconds
-    fetchData('1h');
-    updateIntervalId = setInterval(() => fetchData('1h'), 10000);
+document.getElementById('updateInterval').addEventListener('change', function() {
+    clearInterval(updateIntervalId);
+    const interval = parseInt(this.value, 10);
+    fetchData('1h'); // Fetch data initially
+    updateIntervalId = setInterval(() => fetchData('1h'), interval);
+});
+
+// Initial fetch and set interval to 10 seconds
+fetchData('1h');
+updateIntervalId = setInterval(() => fetchData('1h'), 10000);
 </script>
 {% endblock %}
+
