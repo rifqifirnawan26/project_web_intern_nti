@@ -54,7 +54,6 @@
                         <a class="collapse-item" href="top.html">Top Standing Usage</a>
                         <a class="collapse-item" href="networktraffic.html">Network Traffic</a>
                         <a class="collapse-item" href="heatmap.html">Heat Map</a>
-                        <a class="collapse-item" href="cards.html">Network Mapping</a>
                     </div>
                 </div>
             </li>
@@ -201,7 +200,7 @@
                         <div class="col-xl-12 col-lg-12">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">TOP 10 CPU Usage</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">Network Traffic CPU Usage</h6>
                                 </div>
                                 <div class="card-body">
                                     <canvas id="topMetricsChart"></canvas>
@@ -213,7 +212,7 @@
                         <div class="col-xl-12 col-lg-12">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">TOP 10 Memory Usage</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">Network Traffic Memory Usage</h6>
                                 </div>
                                 <div class="card-body">
                                     <canvas id="topMemoryChart"></canvas>
@@ -273,6 +272,16 @@ let lineChartOptions = {
 let barChart;
 let memoryChart;
 
+// Function to generate a random color
+function getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
 // Function to fetch data and update charts
 function fetchData(timeRange) {
     fetch(`/metrics/?time_range=${timeRange}`)
@@ -311,7 +320,7 @@ function updateBarChart(ctx, label, data) {
         datasets: [{
             label: 'Percentage',
             data: data.map(record => record.percentage),
-            borderColor: 'rgba(75, 192, 192, 1)',
+            borderColor: getRandomColor(), // Assign a random color
             fill: false,
             borderWidth: 1
         }]
@@ -334,7 +343,7 @@ function updateMemoryChart(ctx, label, data) {
         datasets: [{
             label: 'Percentage',
             data: data.map(record => record.percentage),
-            borderColor: 'rgba(75, 192, 192, 1)',
+            borderColor: getRandomColor(), // Assign a random color
             fill: false,
             borderWidth: 1
         }]
@@ -390,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
         startFetchingData(interval);
     });
 });
+
 </script>
     
 

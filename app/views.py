@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from influxdb_client import InfluxDBClient
 
+
 # URL, token, dan nama bucket untuk koneksi ke InfluxDB
 url = "http://192.168.9.16:8086"
 token = "V2JRMGtkEm6BuyXq6QIsjdgfTysg0OY-Zc2zM3v_P0OehjwQ_cmziiSwq8rP590I14yY6ktbxMcVDTirDpuoaw=="
@@ -74,6 +75,40 @@ def get_latest_memory_data(time_range='1h'):
                 data[key].append({'field_value': field_value, 'timestamp': timestamp, 'host': host})
 
         return data
+
+def get_latest_memory_data2(time_range='1h'):
+    if time_range == 'now':
+        time_range = '1m'  # Set a small time range for 'now' to get the latest data
+
+    with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
+        query = f"""
+            option v = {{timeRangeStart: -{time_range}, timeRangeStop: now()}}
+
+            from(bucket: "intern")
+            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+            |> filter(fn: (r) => r["_measurement"] == "system")
+            |> filter(fn: (r) => r["_field"] == "maxmem")
+            |> filter(fn: (r) => r["nodename"] == "pve")
+            |> filter(fn: (r) => r["object"] == "qemu")
+        """
+
+        tables = client.query_api().query(query, org=org)
+
+        data = {}
+        for table in tables:
+            for record in table.records:
+                host = record["host"]
+                vmid = record["vmid"]
+                field_value = record.get_value()
+                timestamp = record.get_time()
+
+                key = f"{host}_{vmid}"
+                if key not in data:
+                    data[key] = []
+
+                data[key].append({'field_value': field_value, 'timestamp': timestamp, 'host': host})
+
+        return data
     
 def get_latest_data2(time_range='1h'):
     with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
@@ -117,15 +152,14 @@ def get_cpu_metrics(time_range='1h'):
 
         return records
    
-def get_disk_read(time_range='1h'):
-    with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
+def get_mem_metrics(time_range='1h'):
+   with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
         query = f"""
-            from(bucket: "intern")
-            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+            from(bucket: "{bucket}")
+            |> range(start: -{time_range})
             |> filter(fn: (r) => r["_measurement"] == "system")
-            |> filter(fn: (r) => r["_field"] == "diskread")
+            |> filter(fn: (r) => r["_field"] == "mem")
         """
-
         tables = client.query_api().query(query, org=org)
         records = []
 
@@ -138,8 +172,74 @@ def get_disk_read(time_range='1h'):
                 })
 
         return records
+   
+def get_latest_diskread_data(time_range='1h'):
+    if time_range == 'now':
+        time_range = '1m'  # Set a small time range for 'now' to get the latest data
 
+    with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
+        query = f"""
+            option v = {{timeRangeStart: -{time_range}, timeRangeStop: now()}}
 
+            from(bucket: "intern")
+            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+            |> filter(fn: (r) => r["_measurement"] == "system")
+            |> filter(fn: (r) => r["_field"] == "diskread")
+            |> filter(fn: (r) => r["nodename"] == "pve")
+            |> filter(fn: (r) => r["object"] == "qemu")
+        """
+
+        tables = client.query_api().query(query, org=org)
+
+        data = {}
+        for table in tables:
+            for record in table.records:
+                host = record["host"]
+                vmid = record["vmid"]
+                field_value = record.get_value()
+                timestamp = record.get_time()
+
+                key = f"{host}_{vmid}"
+                if key not in data:
+                    data[key] = []
+
+                data[key].append({'field_value': field_value, 'timestamp': timestamp, 'host': host})
+
+        return data
+    
+def get_latest_diskwrite_data(time_range='1h'):
+    if time_range == 'now':
+        time_range = '1m'  # Set a small time range for 'now' to get the latest data
+
+    with InfluxDBClient(url=url, token=token, org=org, timeout=20_000) as client:
+        query = f"""
+            option v = {{timeRangeStart: -{time_range}, timeRangeStop: now()}}
+
+            from(bucket: "intern")
+            |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+            |> filter(fn: (r) => r["_measurement"] == "system")
+            |> filter(fn: (r) => r["_field"] == "diskwrite")
+            |> filter(fn: (r) => r["nodename"] == "pve")
+            |> filter(fn: (r) => r["object"] == "qemu")
+        """
+
+        tables = client.query_api().query(query, org=org)
+
+        data = {}
+        for table in tables:
+            for record in table.records:
+                host = record["host"]
+                vmid = record["vmid"]
+                field_value = record.get_value()
+                timestamp = record.get_time()
+
+                key = f"{host}_{vmid}"
+                if key not in data:
+                    data[key] = []
+
+                data[key].append({'field_value': field_value, 'timestamp': timestamp, 'host': host})
+
+        return data
 
 def calculate_percentage(data):
     percentages = {}
@@ -158,20 +258,26 @@ def calculate_percentage(data):
     return percentages
 
 
-def calculate_percentage2(data):
+def calculate_percentage2(data_mem, data_maxmem):
     percentages = {}
-    for key, records in data.items():
-        total_value = sum(record['field_value'] for record in records)
-        total_records = len(records)
-        
-        if total_records == 0:
-            percentages[key] = {"percentage": 0, "host": records[0]['host']}
+    for key, records in data_mem.items():
+        if key in data_maxmem:
+            mem_value = sum(record['field_value'] for record in data_mem[key])
+            maxmem_value = sum(record['field_value'] for record in data_maxmem[key])
+            total_records = len(records)
+
+            if total_records == 0:
+                percentages[key] = {"percentage": 0, "host": records[0]['host']}
+            else:
+                percentages[key] = {
+                    "percentage": (mem_value / maxmem_value) * 100,
+                    "host": records[0]['host']
+                }
         else:
-            percentages[key] = {
-                "percentage": (total_value / total_records) / 1000000000,
-                "host": records[0]['host']
-            }
+            percentages[key] = {"percentage": 0, "host": records[0]['host']}  # Handle case where key is missing in data_maxmem
+
     return percentages
+
 
 def calculate_percentage3(data):
     host_data = {}
@@ -185,7 +291,7 @@ def calculate_percentage3(data):
     host_percentages = {host: (data['total_value'] / data['total_records']) * 100 for host, data in host_data.items()}
     return host_percentages
 
-def calculate_percentage4(data):
+def calculate_diskread_percentage(data):
     percentages = {}
     for key, records in data.items():
         total_value = sum(record['field_value'] for record in records)
@@ -195,11 +301,29 @@ def calculate_percentage4(data):
             percentages[key] = {"percentage": 0, "host": records[0]['host'], "timestamp": records[0]['timestamp']}
         else:
             percentages[key] = {
-                "percentage": (total_value / total_records) * 100,
+                "percentage": (total_value / total_records) / 1000000000000,
                 "host": records[0]['host'],
                 "timestamp": records[0]['timestamp']
             }
     return percentages
+
+def calculate_diskwrite_percentage(data):
+    percentages = {}
+    for key, records in data.items():
+        total_value = sum(record['field_value'] for record in records)
+        total_records = len(records)
+        
+        if total_records == 0:
+            percentages[key] = {"percentage": 0, "host": records[0]['host'], "timestamp": records[0]['timestamp']}
+        else:
+            percentages[key] = {
+                "percentage": (total_value / total_records) / 1000000000000,
+                "host": records[0]['host'],
+                "timestamp": records[0]['timestamp']
+            }
+    return percentages
+
+
 
 def get_metrics(request):
     time_range = request.GET.get('time_range', '1h')
@@ -209,8 +333,21 @@ def get_metrics(request):
 
 def get_memory_metrics(request):
     time_range = request.GET.get('time_range', '1h')
-    data = get_latest_memory_data(time_range)
-    percentages = calculate_percentage2(data)
+    data_mem = get_latest_memory_data(time_range)
+    data_maxmem = get_latest_memory_data2(time_range)
+    percentages = calculate_percentage2(data_mem, data_maxmem)
+    return JsonResponse(percentages, safe=False)
+
+def get_diskread_metrics(request):
+    time_range = request.GET.get('time_range', '1h')
+    data = get_latest_diskread_data(time_range)
+    percentages = calculate_diskread_percentage(data)
+    return JsonResponse(percentages, safe=False)
+
+def get_diskwrite_metrics(request):
+    time_range = request.GET.get('time_range', '1h')
+    data = get_latest_diskwrite_data(time_range)
+    percentages = calculate_diskwrite_percentage(data)
     return JsonResponse(percentages, safe=False)
 
 def get_metrics3(request):
@@ -254,11 +391,14 @@ def get_metrics3(request):
 
     return JsonResponse(result, safe=False)
 
-def get_disk1(request):
-    time_range = request.GET.get('time_range', '1h')
-    data = get_disk_read(time_range)
-    percentages = calculate_percentage4(data)
-    return JsonResponse(percentages, safe=False)
+def monitoring_view(request):
+    cpu_metrics = get_cpu_metrics()
+    mem_metrics = get_mem_metrics()
+    context = {
+        'cpu_metrics': cpu_metrics,
+        'mem_metrics': mem_metrics,
+    }
+    return render(request, 'monitoring.html', context)
 
 def dashboard(request, time_range='1h'):
     data = get_latest_data(time_range)
@@ -271,8 +411,13 @@ def dashboard(request, time_range='1h'):
     return render(request, 'dashboard.html', {'data': percentages, 'time_range': time_range})
 
 def dashboard(request, time_range='1h'):
-    data = get_disk_read(time_range)
-    percentages = calculate_percentage4(data)
+    data = get_latest_diskread_data(time_range)
+    percentages = calculate_diskread_percentage(data)
+    return render(request, 'dashboard.html', {'data': percentages, 'time_range': time_range})
+
+def dashboard(request, time_range='1h'):
+    data = get_latest_diskwrite_data(time_range)
+    percentages = calculate_diskwrite_percentage(data)
     return render(request, 'dashboard.html', {'data': percentages, 'time_range': time_range})
 
 def dashboard(request):
